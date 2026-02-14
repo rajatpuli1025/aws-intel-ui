@@ -160,6 +160,7 @@ else:
     <div style='text-align: center; color: #666; padding: 20px;'>
         <p><strong>Created by:</strong> Rajat</p>
         <p><strong>Assignment:</strong> A5 - Public API Wrapper</p>
-        <p><strong>Course:</strong> Cloud Engineering & Automation</p>
+        <p><strong>Course:</strong> Branding & AI</p>
     </div>
     """, unsafe_allow_html=True)
+
