@@ -1,18 +1,18 @@
 import streamlit as st
 import requests
-import pandas as pd
+import json
 
 st.set_page_config(page_title="AWS Incident Intelligence", layout="wide")
 
 st.title("AWS Incident Intelligence")
 st.caption("Predict operational risks from AWS updates")
 
-# ---------- INPUTS ----------
+# ---------------- SIDEBAR ----------------
 
 st.sidebar.header("Run Analysis")
 
 webhook = st.sidebar.text_input(
-"n8n Webhook URL",
+"n8n Production Webhook URL",
 placeholder="https://xxxx.ngrok-free.app/webhook/aws-intel"
 )
 
@@ -27,11 +27,22 @@ include_html = st.sidebar.checkbox("Include HTML Report", value=True)
 
 run = st.sidebar.button("Run Analysis")
 
-# ---------- RUN ----------
+# ---------------- FUNCTION ----------------
 
-if st.button("Generate Report"):
-    resp = call_api(payload)
-    st.json(resp)
+def call_api(url, payload):
+try:
+response = requests.post(url, json=payload, timeout=120)
+if response.status_code != 200:
+st.error(f"Server returned {response.status_code}")
+return None
+return response.json()
+except Exception as e:
+st.error(f"Connection failed: {e}")
+return None
+
+# ---------------- RUN ----------------
+
+if run:
 
 ```
 if webhook.strip() == "":
@@ -46,29 +57,38 @@ payload = {
 }
 
 with st.spinner("Analyzing AWS updates..."):
-    try:
-        r = requests.post(webhook, json=payload, timeout=120)
-        data = r.json()
-    except Exception as e:
-        st.error(f"Request failed: {e}")
-        st.stop()
+    data = call_api(webhook, payload)
 
-st.success("Analysis Complete")
+if not data:
+    st.stop()
+
+st.success("Analysis complete")
 
 # ---------- SUMMARY ----------
 st.subheader("Summary")
-st.write(f"Items analyzed: **{data.get('total_items_analyzed', 0)}**")
+st.write(f"Generated at: {data.get('generated_at','-')}")
+st.write(f"Items analyzed: {data.get('total_items_analyzed',0)}")
 
-# ---------- TABLE ----------
+# ---------- ITEMS ----------
+st.subheader("Detected Risks")
+
 items = data.get("items", [])
-if items:
-    df = pd.DataFrame(items)
-    st.subheader("Findings")
-    st.dataframe(df, use_container_width=True)
+
+if len(items) == 0:
+    st.info("No risks detected")
+else:
+    for i, item in enumerate(items, 1):
+        with st.expander(f"Risk #{i} — {item.get('urgency','Unknown')}"):
+            st.write("**Reason:**", item.get("reason",""))
+            st.write("**Services:**", ", ".join(item.get("impacted_services",[])))
+            st.write("**Tags:**", ", ".join(item.get("tags",[])))
+            st.write("**Recommendation:**", item.get("action_recommendation",""))
 
 # ---------- HTML REPORT ----------
-html_report = data.get("html_report")
+html_report = data.get("html_report","")
+
 if include_html and html_report:
-    st.subheader("Detailed HTML Report")
+    st.subheader("HTML Report")
     st.components.v1.html(html_report, height=800, scrolling=True)
 ```
+
