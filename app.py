@@ -29,7 +29,9 @@ run = st.sidebar.button("Run Analysis")
 
 # ---------- RUN ----------
 
-if run:
+if st.button("Generate Report"):
+    resp = call_api(payload)
+    st.json(resp)
 
 ```
 if webhook.strip() == "":
